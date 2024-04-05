@@ -35,13 +35,13 @@ You can run the Ansible playbook without any mandatory modifications. The playbo
 1. Navigate to the project directory:
 
 ```bash
-cd <project_directory>
+cd ansible-ftp-minio
 ```
 
 2. Run the Ansible playbook to deploy the services:
 
 ```bash
-ansible-playbook playbook.yaml
+sudo ansible-playbook -i hosts.ini main.yml
 ```
 
 3. The playbook will deploy the following services:
