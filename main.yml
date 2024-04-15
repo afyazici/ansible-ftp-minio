@@ -2,31 +2,13 @@
   hosts: localhost
   gather_facts: yes
   become: yes
-  vars:
-    vm_names:
-      - host1
-      - host2
-      - host3
-    base_image_name: Fedora-Cloud-Base-39-1.5.x86_64.qcow2
-    base_image_url: https://ftp.linux.org.tr/fedora/releases/39/Cloud/x86_64/images/{{ base_image_name }}
-    base_image_sha: ab5be5058c5c839528a7d6373934e0ce5ad6c8f80bd71ed3390032027da52f37
-    libvirt_pool_dir: "/var/lib/libvirt/images"
-    vm_vcpus: 1
-    vm_ram_mb: 1024
-    vm_net: default
-    vm_root_pass: tor
-    cleanup_tmp: no
-    ssh_key: /root/.ssh/id_rsa.pub
-    net_type: bridge
-    net_name: virbr0
-    net: default
-    ssh_pub_key: "$HOME/.ssh/id_rsa.pub"
-    pool_dir: "/var/lib/libvirt/images"
-    vcpus: 1
-    ram_mb: 1024
-    cleanup: no
 
   tasks:
+
+    - name: Load vars from file
+      include_vars:
+        file: defaults/vms.yml
+
     - name: Ensure requirements in place
       package:
         name:
@@ -108,27 +90,8 @@
   become: yes
   tasks:
     - name: Execute shell script
-      shell: |
-        #!/bin/sh
-        # Loop through hosts
-        for i in 1 2 3
-        do
-            # Komut çıktısını değişkene aktar
-            output=$(virsh domifaddr "host$i" --source agent)
+      command: sh scripts/get_ips.sh
 
-            # Eth0 satırını grep ile filtrele ve awk ile IP adresini al
-            eth0_address=$(echo "$output" | grep "eth0" | awk '{print $4}')
-
-            # /24 ifadesini kaldır
-            eth0_address=$(echo "$eth0_address" | sed 's/\/24//')
-
-            # Sonucu yazdır
-            echo "$eth0_address"
-            echo "[host$i]" >> hosts.ini
-            echo "root@$eth0_address" >> hosts.ini
-            echo "" >> hosts.ini
-            echo "ip_host$i: $eth0_address" >> defaults/main.yml
-        done
 
 - name: Refreshing inventory
   hosts: localhost
@@ -137,6 +100,24 @@
     - name: Thats refreshing..
       meta: refresh_inventory
 
+
+- name: Execute date command on host3
+  hosts: host1
+  tasks:
+    - name: Run date command
+      command: date
+
+- name: Execute date command on host3
+  hosts: host2
+  tasks:
+    - name: Run date command
+      command: date
+
+- name: Execute date command on host3
+  hosts: host3
+  tasks:
+    - name: Run date command
+      command: date
 
 
 - name: Deploy VSFTP to host2
@@ -185,9 +166,12 @@
 - name: Add user ftpuser and configure FTP
   hosts: host2
   become: true
-  vars:
-    ftp_user: exoftp
   tasks:
+
+    - name: Load vars from file
+      include_vars:
+        file: defaults/host_conf.yml
+
     - name: Add user for ftp
       ansible.builtin.user:
         name: "{{ ftp_user }}"
@@ -265,33 +249,6 @@
 - name: Install Minio S3 Server
   hosts: host3
   become: true
-  vars:
-    # Minio binaries path
-    minio_server_bin: /usr/local/bin/minio
-    minio_client_bin: /usr/local/bin/mc
-    minio_bucket_name: bigbuck
-    # Runtime user and group for the Minio server service
-    minio_user: minio
-    minio_group: minio
-    # Path to the file containing the ENV variables for the Minio server
-    minio_server_envfile: /etc/default/minio
-    # Minio server listen address
-    minio_server_addr: ":9000"
-    # Minio server data directories
-    minio_server_datadirs:
-      - /var/lib/minio
-    minio_server_make_datadirs: true
-    # Minio server cluster node list.
-    minio_server_cluster_nodes: [ ]
-    # Additional environment variables to be set in minio server environment
-    minio_server_env_extra: ""
-    # Additional Minio server CLI options
-    minio_server_opts: ""
-    # Minio access and secret keys
-    minio_access_key: myReallyLongAccessKey
-    minio_secret_key: mySuperSecretKey
-    new_minio_user: forme1
-    new_minio_passwd: deneme123456
 
   handlers:
 
@@ -304,13 +261,8 @@
 
     - name: Load vars from file
       include_vars:
-        file: defaults/main.yml
+        file: defaults/host_conf.yml
 
-    - name: Update system
-      become: yes
-      dnf:
-        name: "*"
-        state: latest
 
     - name: Install needed packages
       become: yes
@@ -407,19 +359,12 @@
 - name: HOST2 minio client
   hosts: host2
   become: true
-  vars:
-    minio_access_key: myReallyLongAccessKey
-    minio_secret_key: mySuperSecretKey
-    minio_client_bin: /usr/local/bin/mc
-    new_minio_user: forme1
-    new_users_passwd: deneme123456
-    minio_bucket_name: bigbuck
 
   tasks:
 
     - name: Load vars from file
       include_vars:
-        file: defaults/main.yml
+        file: defaults/host_conf.yml
 
     - name: Install wget
       dnf:
@@ -454,31 +399,35 @@
 
     - name: Load vars from file
       include_vars:
-        file: defaults/main.yml
+        file: defaults/host_conf.yml
 
-    - name: Create script file
-      ansible.builtin.copy:
-        content: |
-          #!/bin/bash
-          file_name=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 10)
-          file_size=$((RANDOM%10+1))
-          dd if=/dev/urandom of="$file_name" bs=1K count="$file_size"
-          ftp -n {{ ip_host2 }} <<END_SCRIPT
-          quote USER exoftp
-          quote PASS tor
-          cd ftp/files
-          put "$file_name"
-          quit
-          END_SCRIPT
-          rm "$file_name"
-          echo "Done!"
-        dest: /opt/ftp_transfer_script.sh
+
+    - name: mkdir for randomfiles
+      command: mkdir /opt/ranfil
+
+
+    - name: fileCreate script file
+      ansible.builtin.template:
+        src: scripts/file_create.sh
+        dest: /opt/file_create.sh
         mode: '0755'
 
-    - name: FTP File Transfer
+    - name: fileSend  script file
+      ansible.builtin.template:
+        src: scripts/file_send.sh.j2
+        dest: /opt/ranfil/file_send.sh
+        mode: '0755'
+
+
+    - name: cronset
       ansible.builtin.lineinfile:
         path: /etc/crontab
-        line: "* * * * * root /bin/bash /opt/ftp_transfer_script.sh"
+        line: "* * * * * root /bin/bash /opt/ranfil/file_send.sh"
+
+    - name: cronset2
+      ansible.builtin.lineinfile:
+        path: /etc/crontab
+        line: "* * * * * root /bin/bash /opt/file_create.sh -c 5 -s 10"
 
 - name: Host2 Backup Cron Job
   hosts: host2
@@ -487,36 +436,17 @@
 
     - name: Load vars from file
       include_vars:
-        file: defaults/main.yml
+        file: defaults/host_conf.yml
+
+    - name: Install inotify-tools package
+      package:
+        name: inotify-tools
+        state: present
+
 
     - name: Create script file
-      ansible.builtin.copy:
-        content: |
-          #!/bin/bash
-          MINIO_URL="http://{{ ip_host3 }}:9000"
-          ACCESS_KEY="myReallyLongAccessKey"
-          SECRET_KEY="mySuperSecretKey"
-          BUCKET_NAME="bigbuck"
-
-          /usr/local/bin/mc alias set minio "$MINIO_URL" "$ACCESS_KEY" "$SECRET_KEY"
-
-          FILES_DIR="/home/exoftp/ftp/files"
-
-          if [ -d "$FILES_DIR" ]; then
-          cd "$FILES_DIR" || exit 1
-
-            if [ "$(ls -A .)" ]; then
-              /usr/local/bin/mc cp --recursive . "minio/$BUCKET_NAME"
-              echo "Dosyalar MinIO'ya başarıyla yüklendi."
-            else
-              echo "Belirtilen dizin boş."
-            fi
-          else
-            echo "Belirtilen dizin bulunamadı: $FILES_DIR"
-            exit 1
-          fi
-
-          exit 0
+      ansible.builtin.template:
+        src: scripts/minio_backup.sh.j2
         dest: /opt/minio_backup.sh
         mode: '0755'
 
