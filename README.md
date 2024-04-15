@@ -51,13 +51,14 @@ sudo ansible-playbook -i hosts.ini main.yml
 
 ### Configuration
 
-- Modify the variables in main.yml to customize service configurations such as FTP user credentials, Minio access keys, bucket names, etc.
+- Modify the variables to customize service configurations such as FTP user credentials, Minio access keys, bucket names, etc.
+- You can make all the changes you make in the defaults directory. The project does not need mandatory changes to work.
 - Optionally, you may need to adjust some values in the vm-template.xml.j2 file. These values may vary from system to system.
 
 ### Default Minio User Credentials
 
-- Username: `forme1`
-- Password: `deneme123456`
+- Username: `formen`
+- Password: `xyz123456`
 
 ### Notes
 
