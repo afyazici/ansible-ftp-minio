@@ -403,7 +403,7 @@
 
 
     - name: mkdir for randomfiles
-      command: mkdir /opt/ranfil
+      command: "mkdir /opt/{{ randomfile_dest }}"
 
 
     - name: fileCreate script file
@@ -415,14 +415,14 @@
     - name: fileSend  script file
       ansible.builtin.template:
         src: scripts/file_send.sh.j2
-        dest: /opt/ranfil/file_send.sh
+        dest: "/opt/{{ randomfile_dest }}/file_send.sh"
         mode: '0755'
 
 
     - name: cronset
       ansible.builtin.lineinfile:
         path: /etc/crontab
-        line: "* * * * * root /bin/bash /opt/ranfil/file_send.sh"
+        line: "* * * * * root /bin/bash /opt/{{ randomfile_dest }}/file_send.sh"
 
     - name: cronset2
       ansible.builtin.lineinfile:
