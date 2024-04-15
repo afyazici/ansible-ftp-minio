@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Creating a lock file for instance control.
+lock_file="/tmp/file_send.lock"
+
+# If the lock file already exists, it means another instance is running, so we terminate the script.
+if [ -f "$lock_file" ]; then
+    echo "Script is already running."
+    exit 1
+fi
+
+# Creating the lock file.
+touch "$lock_file"
+
+# FTP information
+ftp_host="{{ ip_host2 }}"
+ftp_username="{{ ftp_user }}"
+ftp_password="tor"
+ftp_dir="ftp/files"
+watch_dir="/opt/{{ randomfile_dest }}"
+
+# If there are files in the watched directory, proceed with the operation
+if [ "$(ls -A $watch_dir)" ]; then
+    for file in $watch_dir/*; do
+        file_name=$(basename "$file")
+
+        # Checking the filename, if it's file_send.sh, we don't delete it.
+        if [ "$file_name" != "file_send.sh" ]; then
+            # Uploading the file to FTP
+            ftp -n $ftp_host <<END_SCRIPT
+            quote USER $ftp_username
+            quote PASS $ftp_password
+            cd $ftp_dir
+            put "$file" "$file_name"
+            quit
+END_SCRIPT
+            echo "$file_name file has been sent to FTP."
+
+            # Deleting the file.
+            rm -f "$file"
+            echo "$file_name file has been deleted."
+        fi
+    done
+fi
+
+# Removing the lock file so that the script can run in the next execution.
+rm -f "$lock_file"

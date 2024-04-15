@@ -1,0 +1,27 @@
+#!/bin/bash
+MINIO_URL="http://{{ ip_host3 }}:9000"
+ACCESS_KEY="{{ minio_access_key }}"
+SECRET_KEY="{{ minio_secret_key }}"
+BUCKET_NAME="{{ minio_bucket_name }}"
+ftp_username="{{ ftp_user }}"
+mc_bin="{{ minio_client_bin }}"
+
+$mc_bin alias set minio "$MINIO_URL" "$ACCESS_KEY" "$SECRET_KEY"
+
+FILES_DIR="/home/$ftp_username/ftp/files"
+
+if [ -d "$FILES_DIR" ]; then
+cd "$FILES_DIR" || exit 1
+
+  if [ "$(ls -A .)" ]; then
+    $mc_bin cp --recursive . "minio/$BUCKET_NAME"
+    echo "Files have been successfully uploaded to MinIO."
+  else
+    echo "The specified directory is empty."
+  fi
+else
+  echo "The specified directory could not be found: $FILES_DIR"
+  exit 1
+fi
+
+exit 0
