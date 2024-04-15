@@ -17,3 +17,4 @@ minio_access_key: myReallyLongAccessKey
 minio_secret_key: mySuperSecretKey
 new_minio_user: formen
 new_minio_passwd: xyz123456
+randomfile_dest: ranfil
