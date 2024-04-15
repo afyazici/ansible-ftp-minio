@@ -408,7 +408,7 @@
 
     - name: fileCreate script file
       ansible.builtin.template:
-        src: scripts/file_create.sh
+        src: scripts/file_create.sh.j2
         dest: /opt/file_create.sh
         mode: '0755'
 
